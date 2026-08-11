@@ -45,6 +45,27 @@ launchctl list | grep git-autosync
 - `ERROR … resolve manually` in the log means a conflict or failed push —
   fix it in the repo yourself; the tool will resume afterwards.
 
+## Good to know
+
+- **macOS "background items added" notice** — that's these two launchd
+  agents. They run as your user, open no ports, and do nothing but git
+  operations on the repos you listed. Inspect them anytime:
+  `~/Library/LaunchAgents/com.tiavelum.git-autosync.*.plist`.
+- **Auto-push means auto-publish.** Every commit in a watched repo reaches
+  GitHub within seconds — including mistaken ones. Don't commit secrets;
+  there is no review window anymore.
+- **The tool syncs itself.** `~/git-autosync` is in the default watch list,
+  so updates pushed to this repo become the running script on your Mac.
+  If you'd rather update manually, remove `~/git-autosync` from
+  `~/.config/git-autosync/repos` and re-run `./install.sh`.
+- **Editing the repo list**: one path per line in
+  `~/.config/git-autosync/repos`, then re-run `./install.sh` (it
+  regenerates the watch list; a repo without upstream is skipped and
+  logged, nothing breaks).
+- **Conflicts are never resolved automatically.** On a failed rebase the
+  script aborts and logs `ERROR … resolve manually`; the repo is left as
+  it was, syncing of other repos continues.
+
 ## Uninstall
 
 ```sh
