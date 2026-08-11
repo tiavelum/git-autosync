@@ -41,7 +41,16 @@ touch <repo>/.git/autosync-push         # ask the watch job to push
 ~/vc/git-autosync/bin/git-autosync.sh sync # pull + push all repos now
 ```
 
-The trigger file is consumed by the run.
+The trigger file is consumed by the run — success or not. So always check
+the outcome instead of assuming:
+
+```sh
+cat <repo>/.git/autosync-status   # written after every run of that repo
+```
+
+It reports `OK`, `HOLD` (commits waiting, pull mode), `FAILED` (push
+rejected) or `CONFLICT` (rebase aborted — the clone diverged from the
+remote and needs a human or a session to reconcile it).
 
 ## Use by Claude
 
@@ -84,6 +93,10 @@ exists for the seconds a sync takes. macOS announces them once as
   `~/.ssh/config`.
 - `ERROR … resolve manually` in the log = conflict or failed push; fix it
   in that repo, syncing of the others continues regardless.
+- **Diverged clone** (behind *and* ahead) happens when something writes to
+  GitHub directly — e.g. a Claude session using the GitHub connector API,
+  which never passes through the clone. Reconcile with
+  `git rebase origin/main`, resolve conflicts, then trigger again.
 
 ## Uninstall
 

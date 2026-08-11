@@ -21,6 +21,13 @@ log() {
   printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG"
 }
 
+# Per-repo outcome of the last run, readable from inside the repo itself:
+# <repo>/.git/autosync-status. Lets a Claude session (or a human) verify
+# what happened instead of assuming the trigger worked.
+status() {
+  printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" > "$repo/.git/autosync-status"
+}
+
 # Single-instance guard: agents may fire together.
 if ! mkdir "$LOCKDIR" 2>/dev/null; then
   exit 0
@@ -78,6 +85,7 @@ while IFS= read -r repo; do
     else
       git rebase --abort 2>/dev/null
       log "ERROR $repo: pull --rebase failed, aborted — resolve manually"
+      status "CONFLICT: rebase onto origin/$branch failed; $behind behind, $ahead ahead. Resolve in the clone, then trigger again."
       continue
     fi
   fi
@@ -85,13 +93,18 @@ while IFS= read -r repo; do
   if [ "$ahead" -gt 0 ]; then
     if [ "$MODE" = "pull" ]; then
       log "HOLD $repo: $ahead commit(s) ahead — not pushing (pull mode)"
+      status "HOLD: $ahead commit(s) waiting; nothing pushed (pull mode)."
       continue
     fi
     upstream=$(git rev-parse --abbrev-ref "@{u}")
     if git push --quiet "${upstream%%/*}" "HEAD:${upstream#*/}" 2>>"$LOG"; then
       log "PUSH $repo: $ahead commit(s) to origin/$branch"
+      status "OK: pushed $ahead commit(s) to $upstream."
     else
       log "ERROR $repo: push failed — resolve manually"
+      status "FAILED: push rejected; $ahead commit(s) still local. Rebase onto origin/$branch, then trigger again."
     fi
+  else
+    status "OK: nothing to push; clone matches $branch."
   fi
 done < "$CONFIG"
