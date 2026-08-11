@@ -24,8 +24,8 @@ lines in the log.
 ## Install
 
 ```sh
-git clone git@github.com:tiavelum/git-autosync.git ~/git-autosync
-cd ~/git-autosync && ./install.sh
+git clone git@github.com:tiavelum/git-autosync.git ~/vc/git-autosync
+cd ~/vc/git-autosync && ./install.sh
 ```
 
 Re-run `./install.sh` after editing the repo list — it regenerates and
@@ -38,7 +38,7 @@ Three equivalent ways, use whichever fits the moment:
 ```sh
 git push                                # classic, always works
 touch <repo>/.git/autosync-push         # ask the watch job to push
-~/git-autosync/bin/git-autosync.sh sync # pull + push all repos now
+~/vc/git-autosync/bin/git-autosync.sh sync # pull + push all repos now
 ```
 
 The trigger file is consumed by the run.
@@ -78,7 +78,7 @@ exists for the seconds a sync takes. macOS announces them once as
   repo's `.git/` can request a push.
 - **The tool syncs itself**: updates pushed to this repo are auto-pulled
   and become the running script. Prefer manual updates? Remove
-  `~/git-autosync` from the repo list and re-run `./install.sh`.
+  `~/vc/git-autosync` from the repo list and re-run `./install.sh`.
 - **SSH key with passphrase?** Make sure it's in the keychain:
   `ssh-add --apple-use-keychain`, plus `UseKeychain yes` in
   `~/.ssh/config`.

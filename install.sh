@@ -24,8 +24,8 @@ chmod +x "$SCRIPT"
 if [ ! -f "$CONFIG" ]; then
   cat > "$CONFIG" <<'EOF'
 # git-autosync: one repo path per line. Lines starting with # are ignored.
-~/setup-docs
-~/git-autosync
+~/vc/setup-docs
+~/vc/git-autosync
 EOF
   echo "Created default config: $CONFIG"
 fi
