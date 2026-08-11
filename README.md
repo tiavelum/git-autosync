@@ -10,17 +10,28 @@ it syncs any repo you list.
 
 ## How it works
 
-Two launchd user agents run `bin/git-autosync.sh`:
+Pulls are automatic; pushes only happen on demand. Two launchd user agents
+run `bin/git-autosync.sh`:
 
-| Agent | Trigger | Purpose |
-|---|---|---|
-| `…git-autosync.watch` | a watched repo's `.git/refs/heads` changes | push seconds after every commit |
-| `…git-autosync.interval` | every 15 min + at login | pull remote changes |
+| Agent | Trigger | Runs | Purpose |
+|---|---|---|---|
+| `…git-autosync.interval` | every 15 min + at login | `pull` mode | pull remote changes; never pushes |
+| `…git-autosync.watch` | `<repo>/.git/autosync-push` appears | `push` mode | push that repo, seconds later |
+
+To request a push (for yourself, a Claude session, or any script):
+
+```sh
+touch <repo>/.git/autosync-push
+```
+
+The trigger file is consumed by the run. Plain `git push` still works
+anytime, and `bin/git-autosync.sh sync` does a full pull+push of all repos.
 
 For each repo listed in `~/.config/git-autosync/repos` the script fetches,
-then `pull --rebase --autostash` if behind, then pushes if ahead. It skips
-repos that are mid-rebase/merge, on a detached HEAD, or without upstream,
-and aborts cleanly on conflicts (logged, never destructive).
+then `pull --rebase --autostash` if behind, then (in push/sync mode) pushes
+if ahead. It skips repos that are mid-rebase/merge, on a detached HEAD, or
+without upstream, and aborts cleanly on conflicts (logged, never
+destructive). Unpushed commits show up as `HOLD` lines in the log.
 
 ## Install
 
@@ -51,13 +62,16 @@ launchctl list | grep git-autosync
   agents. They run as your user, open no ports, and do nothing but git
   operations on the repos you listed. Inspect them anytime:
   `~/Library/LaunchAgents/com.tiavelum.git-autosync.*.plist`.
-- **Auto-push means auto-publish.** Every commit in a watched repo reaches
-  GitHub within seconds — including mistaken ones. Don't commit secrets;
-  there is no review window anymore.
-- **The tool syncs itself.** `~/git-autosync` is in the default watch list,
-  so updates pushed to this repo become the running script on your Mac.
-  If you'd rather update manually, remove `~/git-autosync` from
-  `~/.config/git-autosync/repos` and re-run `./install.sh`.
+- **Pushing stays a decision.** Nothing leaves your Mac until someone
+  creates the trigger file (or pushes manually) — commits accumulate
+  locally and are pulled-rebased under them in the meantime. The one to
+  watch is the trigger itself: anything that can write into a watched
+  repo's `.git/` can request a push.
+- **The tool syncs itself.** `~/git-autosync` is in the default repo list,
+  so updates pushed to this repo are auto-pulled and become the running
+  script on your Mac. If you'd rather update manually, remove
+  `~/git-autosync` from `~/.config/git-autosync/repos` and re-run
+  `./install.sh`.
 - **Editing the repo list**: one path per line in
   `~/.config/git-autosync/repos`, then re-run `./install.sh` (it
   regenerates the watch list; a repo without upstream is skipped and

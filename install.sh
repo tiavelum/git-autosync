@@ -34,11 +34,11 @@ watch_paths=""
 while IFS= read -r repo; do
   case "$repo" in ''|\#*) continue ;; esac
   repo="${repo/#\~/$HOME}"
-  if [ -d "$repo/.git/refs/heads" ]; then
+  if [ -d "$repo/.git" ]; then
     watch_paths="$watch_paths
-    <string>$repo/.git/refs/heads</string>"
+    <string>$repo/.git/autosync-push</string>"
   else
-    echo "WARNING: $repo has no .git/refs/heads — not watching it" >&2
+    echo "WARNING: $repo is not a git repo — not watching it" >&2
   fi
 done < "$CONFIG"
 
@@ -53,6 +53,7 @@ cat > "$WATCH_PLIST" <<EOF
   <array>
     <string>/bin/bash</string>
     <string>$SCRIPT</string>
+    <string>push</string>
   </array>
   <key>WatchPaths</key>
   <array>$watch_paths
@@ -74,6 +75,7 @@ cat > "$INTERVAL_PLIST" <<EOF
   <array>
     <string>/bin/bash</string>
     <string>$SCRIPT</string>
+    <string>pull</string>
   </array>
   <key>StartInterval</key>
   <integer>900</integer>

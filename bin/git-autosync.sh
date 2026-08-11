@@ -1,17 +1,18 @@
 #!/bin/bash
 # git-autosync — keep local clones in sync with their remotes.
 #
-# For each repo listed in ~/.config/git-autosync/repos:
-#   1. fetch
-#   2. pull --rebase --autostash  (only when it is safe)
-#   3. push                       (only if local is ahead)
+# Usage: git-autosync.sh [mode]
+#   pull  — fetch + pull --rebase only; never pushes (interval agent default)
+#   push  — pull, then push — but only repos with a trigger file
+#           <repo>/.git/autosync-push (consumed on run; watch agent default)
+#   sync  — pull + push everything that is ahead (manual full run)
 #
-# Triggered by launchd: WatchPaths on each repo's .git/refs/heads gives an
-# instant push after every commit; StartInterval gives periodic pulls.
+# Repos are listed in ~/.config/git-autosync/repos.
 # Safe to run at any time; it skips anything that looks risky.
 
 set -u
 
+MODE="${1:-sync}"
 CONFIG="${HOME}/.config/git-autosync/repos"
 LOG="${HOME}/Library/Logs/git-autosync.log"
 LOCKDIR="${TMPDIR:-/tmp}/git-autosync.lock"
@@ -20,7 +21,7 @@ log() {
   printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG"
 }
 
-# Single-instance guard: watch + interval jobs may fire together.
+# Single-instance guard: agents may fire together.
 if ! mkdir "$LOCKDIR" 2>/dev/null; then
   exit 0
 fi
@@ -35,6 +36,13 @@ while IFS= read -r repo; do
   if [ ! -d "$repo/.git" ]; then
     log "SKIP $repo: not a git repo"
     continue
+  fi
+
+  # In push mode, only act on repos whose trigger file is set.
+  trigger="$repo/.git/autosync-push"
+  if [ "$MODE" = "push" ]; then
+    [ -f "$trigger" ] || continue
+    rm -f "$trigger"
   fi
 
   cd "$repo" || continue
@@ -75,6 +83,10 @@ while IFS= read -r repo; do
   fi
 
   if [ "$ahead" -gt 0 ]; then
+    if [ "$MODE" = "pull" ]; then
+      log "HOLD $repo: $ahead commit(s) ahead — not pushing (pull mode)"
+      continue
+    fi
     upstream=$(git rev-parse --abbrev-ref "@{u}")
     if git push --quiet "${upstream%%/*}" "HEAD:${upstream#*/}" 2>>"$LOG"; then
       log "PUSH $repo: $ahead commit(s) to origin/$branch"
