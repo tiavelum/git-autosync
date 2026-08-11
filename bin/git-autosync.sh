@@ -75,7 +75,8 @@ while IFS= read -r repo; do
   fi
 
   if [ "$ahead" -gt 0 ]; then
-    if git push --quiet 2>>"$LOG"; then
+    upstream=$(git rev-parse --abbrev-ref "@{u}")
+    if git push --quiet "${upstream%%/*}" "HEAD:${upstream#*/}" 2>>"$LOG"; then
       log "PUSH $repo: $ahead commit(s) to origin/$branch"
     else
       log "ERROR $repo: push failed — resolve manually"
