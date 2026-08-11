@@ -1,37 +1,25 @@
 # git-autosync
 
-Keeps local git clones in sync with their GitHub remotes on macOS — commits
-made locally get pushed automatically, and remote changes get pulled in.
-
-Built as a companion for [setup-docs](https://github.com/tiavelum/setup-docs)
-Cowork sessions: Claude can edit and commit in a local clone but has no
-network path to GitHub, so this tool closes the gap. It is generic, though —
-it syncs any repo you list.
+Keeps local git clones on macOS in sync with their remotes. Pulls are
+automatic; pushes happen only on demand. Built as a companion for
+[setup-docs](https://github.com/tiavelum/setup-docs) Cowork sessions —
+Claude can edit and commit in a local clone but cannot push — yet it is
+generic: it syncs any repo you list.
 
 ## How it works
 
-Pulls are automatic; pushes only happen on demand. Two launchd user agents
-run `bin/git-autosync.sh`:
+Two launchd jobs run `bin/git-autosync.sh` on the repos listed in
+`~/.config/git-autosync/repos` (one path per line, `~` allowed):
 
-| Agent | Trigger | Runs | Purpose |
-|---|---|---|---|
-| `…git-autosync.interval` | every 15 min + at login | `pull` mode | pull remote changes; never pushes |
-| `…git-autosync.watch` | `<repo>/.git/autosync-push` appears | `push` mode | push that repo, seconds later |
+| Job | Fires | Does |
+|---|---|---|
+| interval | every 15 min + login | pull; never pushes |
+| watch | `<repo>/.git/autosync-push` appears | push that repo |
 
-To request a push (for yourself, a Claude session, or any script):
-
-```sh
-touch <repo>/.git/autosync-push
-```
-
-The trigger file is consumed by the run. Plain `git push` still works
-anytime, and `bin/git-autosync.sh sync` does a full pull+push of all repos.
-
-For each repo listed in `~/.config/git-autosync/repos` the script fetches,
-then `pull --rebase --autostash` if behind, then (in push/sync mode) pushes
-if ahead. It skips repos that are mid-rebase/merge, on a detached HEAD, or
-without upstream, and aborts cleanly on conflicts (logged, never
-destructive). Unpushed commits show up as `HOLD` lines in the log.
+Pulls are `--rebase --autostash`. The script skips repos that are
+mid-rebase/merge, on a detached HEAD, or without upstream. On a conflict
+it aborts and logs — never destructive. Unpushed commits show as `HOLD`
+lines in the log.
 
 ## Install
 
@@ -40,48 +28,67 @@ git clone git@github.com:tiavelum/git-autosync.git ~/git-autosync
 cd ~/git-autosync && ./install.sh
 ```
 
-Edit `~/.config/git-autosync/repos` (one path per line, `~` allowed), then
-re-run `./install.sh` to regenerate the watch list.
+Re-run `./install.sh` after editing the repo list — it regenerates and
+reloads both jobs.
 
-## Verify / troubleshoot
+## Pushing
+
+Three equivalent ways, use whichever fits the moment:
 
 ```sh
-tail -f ~/Library/Logs/git-autosync.log
-launchctl list | grep git-autosync
+git push                                # classic, always works
+touch <repo>/.git/autosync-push         # ask the watch job to push
+~/git-autosync/bin/git-autosync.sh sync # pull + push all repos now
 ```
 
-- Pushes need your SSH key. If it has a passphrase, make sure it is in the
-  keychain: `ssh-add --apple-use-keychain` and `UseKeychain yes` in
-  `~/.ssh/config`.
-- `ERROR … resolve manually` in the log means a conflict or failed push —
-  fix it in the repo yourself; the tool will resume afterwards.
+The trigger file is consumed by the run.
+
+## Use by Claude
+
+A Cowork session works in your connected clone: it edits, commits, and
+pulls arrive automatically via the interval job. It cannot push — no
+credentials, no SSH route. When you tell Claude to push, it creates the
+trigger file (`touch <repo>/.git/autosync-push`); your Mac then pushes
+with your keys seconds later. So the publish decision stays on your side,
+Claude only requests it.
+
+## SSH or HTTPS?
+
+Both work here. Pushes run on your Mac, so the tool simply uses whatever
+transport the clone's remote is set to (`git remote -v`): SSH remotes use
+your SSH key, HTTPS remotes your stored token. Your credentials never
+leave the machine — which is exactly why this tool exists instead of
+handing a token to the sandbox.
+
+## Inspect
+
+```sh
+launchctl list | grep git-autosync      # "-" = registered but idle
+tail -f ~/Library/Logs/git-autosync.log
+```
+
+The jobs are dormant plists in `~/Library/LaunchAgents/`; a process only
+exists for the seconds a sync takes. macOS announces them once as
+"background items added" after install.
 
 ## Good to know
 
-- **macOS "background items added" notice** — that's these two launchd
-  agents. They run as your user, open no ports, and do nothing but git
-  operations on the repos you listed. Inspect them anytime:
-  `~/Library/LaunchAgents/com.tiavelum.git-autosync.*.plist`.
-- **Pushing stays a decision.** Nothing leaves your Mac until someone
-  creates the trigger file (or pushes manually) — commits accumulate
-  locally and are pulled-rebased under them in the meantime. The one to
-  watch is the trigger itself: anything that can write into a watched
+- **Pushing stays a decision** — commits accumulate locally until someone
+  pushes or sets the trigger. Anything that can write into a watched
   repo's `.git/` can request a push.
-- **The tool syncs itself.** `~/git-autosync` is in the default repo list,
-  so updates pushed to this repo are auto-pulled and become the running
-  script on your Mac. If you'd rather update manually, remove
-  `~/git-autosync` from `~/.config/git-autosync/repos` and re-run
-  `./install.sh`.
-- **Editing the repo list**: one path per line in
-  `~/.config/git-autosync/repos`, then re-run `./install.sh` (it
-  regenerates the watch list; a repo without upstream is skipped and
-  logged, nothing breaks).
-- **Conflicts are never resolved automatically.** On a failed rebase the
-  script aborts and logs `ERROR … resolve manually`; the repo is left as
-  it was, syncing of other repos continues.
+- **The tool syncs itself**: updates pushed to this repo are auto-pulled
+  and become the running script. Prefer manual updates? Remove
+  `~/git-autosync` from the repo list and re-run `./install.sh`.
+- **SSH key with passphrase?** Make sure it's in the keychain:
+  `ssh-add --apple-use-keychain`, plus `UseKeychain yes` in
+  `~/.ssh/config`.
+- `ERROR … resolve manually` in the log = conflict or failed push; fix it
+  in that repo, syncing of the others continues regardless.
 
 ## Uninstall
 
 ```sh
 ./uninstall.sh
 ```
+
+Removes both jobs; config and log stay.
