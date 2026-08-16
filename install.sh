@@ -30,8 +30,10 @@ EOF
   echo "Created default config: $CONFIG"
 fi
 
+# `|| [ -n "$repo" ]`: without it, a last line lacking a trailing newline
+# is read but never processed — that repo would silently not be watched.
 watch_paths=""
-while IFS= read -r repo; do
+while IFS= read -r repo || [ -n "$repo" ]; do
   case "$repo" in ''|\#*) continue ;; esac
   repo="${repo/#\~/$HOME}"
   if [ -d "$repo/.git" ]; then
