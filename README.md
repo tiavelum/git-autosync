@@ -6,6 +6,10 @@ automatic; pushes happen only on demand. Built as a companion for
 Claude can edit and commit in a local clone but cannot push — yet it is
 generic: it syncs any repo you list.
 
+It transports commits. It never creates them: committing stays with
+whoever authored the change (you, or a Claude session). Uncommitted work
+is reported, never touched.
+
 ## How it works
 
 Two launchd jobs run `bin/git-autosync.sh` on the repos listed in
@@ -29,7 +33,9 @@ cd ~/vc/git-autosync && ./install.sh
 ```
 
 Re-run `./install.sh` after editing the repo list — it regenerates and
-reloads both jobs.
+reloads both jobs. This is required, not cosmetic: the watch job's
+`WatchPaths` array is baked into the plist at install time, so a newly
+listed repo is not watched until you regenerate it.
 
 ## Pushing
 
@@ -51,6 +57,27 @@ cat <repo>/.git/autosync-status   # written after every run of that repo
 It reports `OK`, `HOLD` (commits waiting, pull mode), `FAILED` (push
 rejected) or `CONFLICT` (rebase aborted — the clone diverged from the
 remote and needs a human or a session to reconcile it).
+
+Any of those may carry a trailing `DIRTY: …` note — see below.
+
+## Committed vs. merely saved
+
+The `OK` / `HOLD` / `FAILED` outcomes are about **commits**. A file you
+edited and saved but never committed is not a commit, so it cannot be
+pushed and does not make the repo "ahead". Such a change lives on exactly
+one disk, in no history, and a clean `OK: nothing to push` used to be
+reported right on top of it.
+
+Every status line now carries a `DIRTY: n uncommitted change(s), m
+untracked file(s)` note when the working tree is not clean. It is a
+warning only — the script will not stage, commit or stash on your behalf,
+because a robot-written commit of a half-finished edit is worse than an
+honest warning. Fix it the normal way:
+
+```sh
+cd <repo> && git status && git add -A && git commit -m "…"
+touch .git/autosync-push
+```
 
 ## Use by Claude
 
@@ -97,6 +124,13 @@ exists for the seconds a sync takes. macOS announces them once as
   GitHub directly — e.g. a Claude session using the GitHub connector API,
   which never passes through the clone. Reconcile with
   `git rebase origin/main`, resolve conflicts, then trigger again.
+- **The repo list must end with a newline.** Both scripts read it with
+  `while read`, which reports failure on an unterminated last line. Until
+  2026-08-16 that line was assigned and then dropped, so the final repo
+  in the list was silently never synced — no log entry, no warning. Fixed
+  with `|| [ -n "$repo" ]` in both loops, but `printf '%s\n'` when
+  appending is still the safe habit. In zsh a trailing `%` after
+  `cat`-ing the file is the tell that the newline is missing.
 
 ## Uninstall
 
