@@ -9,6 +9,10 @@
 #
 # Repos are listed in ~/.config/git-autosync/repos.
 # Safe to run at any time; it skips anything that looks risky.
+#
+# This script transports commits; it never creates them. Uncommitted work
+# is reported (DIRTY) and otherwise left strictly alone — committing stays
+# with whoever authored the change.
 
 set -u
 
@@ -36,7 +40,10 @@ trap 'rmdir "$LOCKDIR"' EXIT
 
 [ -f "$CONFIG" ] || { log "no config at $CONFIG — nothing to do"; exit 0; }
 
-while IFS= read -r repo; do
+# `|| [ -n "$repo" ]`: read returns non-zero on a last line without a
+# trailing newline, but has already assigned it. Without this guard the
+# final repo in the list is silently never synced.
+while IFS= read -r repo || [ -n "$repo" ]; do
   case "$repo" in ''|\#*) continue ;; esac
   repo="${repo/#\~/$HOME}"
 
@@ -66,6 +73,18 @@ while IFS= read -r repo; do
     continue
   fi
 
+  # Uncommitted work is invisible to the ahead/behind counts below, so a
+  # repo full of unsaved edits would otherwise be reported as "OK".
+  # Report it on every status line; never act on it.
+  tracked=$(git status --porcelain --untracked-files=no 2>/dev/null | grep -c '^' || true)
+  untracked=$(git ls-files --others --exclude-standard 2>/dev/null | grep -c '^' || true)
+  if [ "$tracked" -gt 0 ] || [ "$untracked" -gt 0 ]; then
+    dirty=" | DIRTY: $tracked uncommitted change(s), $untracked untracked file(s) — not versioned anywhere; commit them."
+    log "DIRTY $repo: $tracked uncommitted, $untracked untracked"
+  else
+    dirty=""
+  fi
+
   if ! git fetch --quiet 2>>"$LOG"; then
     log "WARN $repo: fetch failed (offline?)"
     continue
@@ -85,7 +104,7 @@ while IFS= read -r repo; do
     else
       git rebase --abort 2>/dev/null
       log "ERROR $repo: pull --rebase failed, aborted — resolve manually"
-      status "CONFLICT: rebase onto origin/$branch failed; $behind behind, $ahead ahead. Resolve in the clone, then trigger again."
+      status "CONFLICT: rebase onto origin/$branch failed; $behind behind, $ahead ahead. Resolve in the clone, then trigger again.$dirty"
       continue
     fi
   fi
@@ -93,18 +112,18 @@ while IFS= read -r repo; do
   if [ "$ahead" -gt 0 ]; then
     if [ "$MODE" = "pull" ]; then
       log "HOLD $repo: $ahead commit(s) ahead — not pushing (pull mode)"
-      status "HOLD: $ahead commit(s) waiting; nothing pushed (pull mode)."
+      status "HOLD: $ahead commit(s) waiting; nothing pushed (pull mode).$dirty"
       continue
     fi
     upstream=$(git rev-parse --abbrev-ref "@{u}")
     if git push --quiet "${upstream%%/*}" "HEAD:${upstream#*/}" 2>>"$LOG"; then
       log "PUSH $repo: $ahead commit(s) to origin/$branch"
-      status "OK: pushed $ahead commit(s) to $upstream."
+      status "OK: pushed $ahead commit(s) to $upstream.$dirty"
     else
       log "ERROR $repo: push failed — resolve manually"
-      status "FAILED: push rejected; $ahead commit(s) still local. Rebase onto origin/$branch, then trigger again."
+      status "FAILED: push rejected; $ahead commit(s) still local. Rebase onto origin/$branch, then trigger again.$dirty"
     fi
   else
-    status "OK: nothing to push; clone matches $branch."
+    status "OK: nothing to push; clone matches $branch.$dirty"
   fi
 done < "$CONFIG"
