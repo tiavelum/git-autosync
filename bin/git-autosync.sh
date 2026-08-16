@@ -7,7 +7,8 @@
 #           <repo>/.git/autosync-push (consumed on run; watch agent default)
 #   sync  — pull + push everything that is ahead (manual full run)
 #
-# Repos are listed in ~/.config/git-autosync/repos.
+# Repos are listed in ~/.config/git-autosync/repos, which may be a symlink
+# into a repo so the list itself is versioned.
 # Safe to run at any time; it skips anything that looks risky.
 #
 # This script transports commits; it never creates them. Uncommitted work
@@ -37,6 +38,13 @@ if ! mkdir "$LOCKDIR" 2>/dev/null; then
   exit 0
 fi
 trap 'rmdir "$LOCKDIR"' EXIT
+
+# A dangling symlink is a different problem from an absent config — the
+# list exists, its clone does not. Do not report it as "nothing to do".
+if [ -L "$CONFIG" ] && [ ! -e "$CONFIG" ]; then
+  log "ERROR config $CONFIG is a symlink to a missing target ($(readlink "$CONFIG")) — nothing synced; clone that repo"
+  exit 1
+fi
 
 [ -f "$CONFIG" ] || { log "no config at $CONFIG — nothing to do"; exit 0; }
 
