@@ -160,3 +160,15 @@ it is the only route that works from a process holding **no credentials**.
 An assistant session commits in the clone and touches the trigger; this agent
 pushes with your keys. That separation is the point — not a preference about
 which command is nicer.
+
+### `FAILED: push rejected` on one repository only
+
+Check the remote first: `git -C <repo> remote get-url origin`. A clone on an
+`https://` remote needs a credential helper and a live token, while an
+`ssh://` one uses the key `gh auth login` set up — so a single HTTPS clone
+among SSH ones fails to push while every other repository succeeds, and the
+symptom looks like divergence rather than authentication. Fix it once:
+
+```bash
+git -C <repo> remote set-url origin git@github.com:<owner>/<repo>.git
+```
