@@ -47,7 +47,7 @@ if [ ! -e "$CONFIG" ]; then
 # e.g. ~/vc/my-repo — and keep the trailing newline on the last line.
 #
 # Better: keep this list in a repo so it is versioned, and symlink it:
-#   ln -sfn ~/vc/dotfiles/git-autosync-repos ~/.config/git-autosync/repos
+#   ln -sfn ~/vc/machine-config/git-autosync-repos ~/.config/git-autosync/repos
 EOF
   echo "WARNING: no repo list found — created an empty one at $CONFIG" >&2
   echo "         git-autosync will sync NOTHING until you list repos there," >&2
@@ -123,5 +123,24 @@ for plist in "$WATCH_PLIST" "$INTERVAL_PLIST"; do
   launchctl bootstrap "gui/$uid" "$plist"
   echo "Loaded $(basename "$plist")"
 done
+
+# Verify the effect, not the pointer. `bootstrap` can succeed and the job
+# still not be running — a malformed plist, a path that no longer exists,
+# a stale job under the same label. Writing two files and reporting success
+# is exactly the silent failure this whole tool exists to prevent.
+missing=0
+for label in com.tiavelum.git-autosync.watch com.tiavelum.git-autosync.interval; do
+  if launchctl list | grep -q "$label"; then
+    echo "Running: $label"
+  else
+    echo "ERROR: $label was installed but is not running" >&2
+    missing=1
+  fi
+done
+
+if [ "$missing" -ne 0 ]; then
+  echo "       Check the plists in $AGENTS, then re-run this script." >&2
+  exit 1
+fi
 
 echo "Done ($listed repo(s) listed). Log: ~/Library/Logs/git-autosync.log"

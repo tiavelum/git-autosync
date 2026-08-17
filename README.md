@@ -139,3 +139,14 @@ exists for the seconds a sync takes. macOS announces them once as
 ```
 
 Removes both jobs; config and log stay.
+
+## Which publishing route to use
+
+The three routes above are equivalent for a human at a keyboard, and a plain
+`git push` from your own terminal is always legitimate.
+
+The trigger file is the one the setup documentation teaches, for one reason:
+it is the only route that works from a process holding **no credentials**.
+An assistant session commits in the clone and touches the trigger; this agent
+pushes with your keys. That separation is the point — not a preference about
+which command is nicer.
