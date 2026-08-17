@@ -3,10 +3,10 @@
 #
 # Reads ~/.config/git-autosync/repos, then generates and loads two
 # launchd agents:
-#   com.tiavelum.git-autosync.watch    — fires when a repo's branch refs change
+#   com.tiavelum.git-autosync.watch    — fires when <repo>/.git/autosync-push appears
 #   com.tiavelum.git-autosync.interval — fires every 15 minutes (pulls)
 #
-# Re-run after editing the repos config to regenerate the watch list.
+# Re-run after editing the sync list to regenerate the watch list.
 #
 # The config may be a symlink into a repo (recommended — that is how the
 # list itself gets versioned). This script never overwrites an existing
@@ -31,7 +31,7 @@ chmod +x "$SCRIPT"
 if [ -L "$CONFIG" ] && [ ! -e "$CONFIG" ]; then
   echo "ERROR: $CONFIG is a symlink pointing at something that does not exist:" >&2
   echo "         -> $(readlink "$CONFIG")" >&2
-  echo "       Clone the repo holding your repo list, then re-run this script." >&2
+  echo "       Clone the repo holding your sync list, then re-run this script." >&2
   echo "       Refusing to replace the link with a default file." >&2
   exit 1
 fi
@@ -49,7 +49,7 @@ if [ ! -e "$CONFIG" ]; then
 # Better: keep this list in a repo so it is versioned, and symlink it:
 #   ln -sfn ~/vc/machine-config/git-autosync-repos ~/.config/git-autosync/repos
 EOF
-  echo "WARNING: no repo list found — created an empty one at $CONFIG" >&2
+  echo "WARNING: no sync list found — created an empty one at $CONFIG" >&2
   echo "         git-autosync will sync NOTHING until you list repos there," >&2
   echo "         or point it at your versioned list with a symlink." >&2
 fi

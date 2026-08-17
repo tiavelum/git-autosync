@@ -32,7 +32,7 @@ git clone git@github.com:tiavelum/git-autosync.git ~/vc/git-autosync
 cd ~/vc/git-autosync && ./install.sh
 ```
 
-Re-run `./install.sh` after editing the repo list — it regenerates and
+Re-run `./install.sh` after editing the sync list — it regenerates and
 reloads both jobs. This is required, not cosmetic: the watch job's
 `WatchPaths` array is baked into the plist at install time, so a newly
 listed repo is not watched until you regenerate it.
@@ -114,7 +114,7 @@ exists for the seconds a sync takes. macOS announces them once as
   repo's `.git/` can request a push.
 - **The tool syncs itself**: updates pushed to this repo are auto-pulled
   and become the running script. Prefer manual updates? Remove
-  `~/vc/git-autosync` from the repo list and re-run `./install.sh`.
+  `~/vc/git-autosync` from the sync list and re-run `./install.sh`.
 - **SSH key with passphrase?** Make sure it's in the keychain:
   `ssh-add --apple-use-keychain`, plus `UseKeychain yes` in
   `~/.ssh/config`.
@@ -124,7 +124,7 @@ exists for the seconds a sync takes. macOS announces them once as
   GitHub directly — e.g. a Claude session using the GitHub connector API,
   which never passes through the clone. Reconcile with
   `git rebase origin/main`, resolve conflicts, then trigger again.
-- **The repo list must end with a newline.** Both scripts read it with
+- **The sync list must end with a newline.** Both scripts read it with
   `while read`, which reports failure on an unterminated last line. Until
   2026-08-16 that line was assigned and then dropped, so the final repo
   in the list was silently never synced — no log entry, no warning. Fixed
