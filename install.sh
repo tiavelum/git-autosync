@@ -72,6 +72,16 @@ done < "$CONFIG"
 
 if [ "$listed" -eq 0 ]; then
   echo "WARNING: $CONFIG lists no repos — the agents will be installed but idle" >&2
+  echo "         The watch job has nothing to watch, so the trigger file cannot" >&2
+  echo "         fire until you list repos here and re-run this script." >&2
+elif [ -z "$watch_paths" ]; then
+  # An empty WatchPaths array means the trigger mechanism cannot fire at all,
+  # while launchctl still reports the label as running — exactly the silent
+  # failure this tool exists to prevent.
+  echo "ERROR: none of the $listed listed repo(s) is a git clone, so the watch" >&2
+  echo "       list is empty: <repo>/.git/autosync-push could never fire." >&2
+  echo "       Clone those repos or fix their paths in $CONFIG, then re-run." >&2
+  exit 1
 fi
 
 cat > "$WATCH_PLIST" <<EOF

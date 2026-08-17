@@ -8,7 +8,8 @@ generic: it syncs any repo you list.
 
 It transports commits. It never creates them: committing stays with
 whoever authored the change (you, or a Claude session). Uncommitted work
-is reported, never touched.
+is reported and never committed; during a pull it is briefly autostashed
+and re-applied (`git pull --rebase --autostash`).
 
 ## How it works
 
@@ -47,16 +48,25 @@ touch <repo>/.git/autosync-push         # ask the watch job to push
 ~/vc/git-autosync/bin/git-autosync.sh sync # pull + push all repos now
 ```
 
-The trigger file is consumed by the run — success or not. So always check
-the outcome instead of assuming:
+The trigger file is consumed once the repo has passed its preconditions —
+whether the push then succeeds or not. A repo that never got that far
+(mid-rebase, detached HEAD, no upstream, fetch failed) keeps its trigger.
+Either way, check the outcome instead of assuming:
 
 ```sh
-cat <repo>/.git/autosync-status   # written after every run of that repo
+cat <repo>/.git/autosync-status
 ```
 
-It reports `OK`, `HOLD` (commits waiting, pull mode), `FAILED` (push
-rejected) or `CONFLICT` (rebase aborted — the clone diverged from the
-remote and needs a human or a session to reconcile it).
+It is written on every run that reached that repo, including the runs that
+did nothing, and reports `OK`, `HOLD` (commits waiting, pull mode),
+`FAILED` (push rejected, or fetch failed), `SKIPPED` (a precondition was
+not met — the line says which) or `CONFLICT` (rebase aborted — the clone
+diverged from the remote and needs a human or a session to reconcile it).
+
+Two cases leave no status behind, so an old line can survive there: a
+listed path that is not a git repo at all (there is no `.git` to write
+into), and, in push mode, a repo whose trigger was not set — it is passed
+over untouched. Check the timestamp the status line carries.
 
 Any of those may carry a trailing `DIRTY: …` note — see below.
 
