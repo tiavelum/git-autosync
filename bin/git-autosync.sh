@@ -34,8 +34,7 @@ status() {
   printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" > "$repo/.git/autosync-status"
 }
 
-# An unrecognised mode used to fall through to the push branch and push every
-# listed repo. Fail loudly instead.
+# An unrecognised mode must not fall through to the push branch. Fail loudly.
 case "$MODE" in
   pull|push|sync) ;;
   *)
