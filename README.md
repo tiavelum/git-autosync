@@ -2,7 +2,7 @@
 
 Keeps local git clones on macOS in sync with their remotes. Pulls are
 automatic; pushes happen only on demand. Built as a companion for
-[setup-docs](https://github.com/tiavelum/setup-docs) Cowork sessions —
+[apple-setup](https://github.com/tiavelum/apple-setup) Cowork sessions —
 Claude can edit and commit in a local clone but cannot push — yet it is
 generic: it syncs any repo you list.
 
