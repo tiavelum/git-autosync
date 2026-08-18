@@ -47,7 +47,7 @@ if [ ! -e "$CONFIG" ]; then
 # e.g. ~/vc/my-repo — and keep the trailing newline on the last line.
 #
 # Better: keep this list in a repo so it is versioned, and symlink it:
-#   ln -sfn ~/vc/machine-config/git-autosync-repos ~/.config/git-autosync/repos
+#   ln -sfn ~/vc/mac-config/git-autosync-repos ~/.config/git-autosync/repos
 EOF
   echo "WARNING: no sync list found — created an empty one at $CONFIG" >&2
   echo "         git-autosync will sync NOTHING until you list repos there," >&2
