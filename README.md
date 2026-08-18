@@ -1,10 +1,9 @@
 # git-autosync
 
 Keeps local git clones on macOS in sync with their remotes. Pulls are
-automatic; pushes happen only on demand. Built as a companion for
-[apple-setup](https://github.com/tiavelum/apple-setup) Cowork sessions —
-Claude can edit and commit in a local clone but cannot push — yet it is
-generic: it syncs any repo you list.
+automatic; pushes happen only on demand. Built for assistant sessions
+(Claude Cowork) that can edit and commit in a local clone but cannot push —
+yet it is generic: it syncs any repo you list.
 
 It transports commits. It never creates them: committing stays with
 whoever authored the change (you, or a Claude session). Uncommitted work
@@ -155,8 +154,8 @@ Removes both jobs; config and log stay.
 The three routes above are equivalent for a human at a keyboard, and a plain
 `git push` from your own terminal is always legitimate.
 
-The trigger file is the one the setup documentation teaches, for one reason:
-it is the only route that works from a process holding **no credentials**.
+The trigger file is the one to teach an assistant, for one reason: it is
+the only route that works from a process holding **no credentials**.
 An assistant session commits in the clone and touches the trigger; this agent
 pushes with your keys. That separation is the point — not a preference about
 which command is nicer.
